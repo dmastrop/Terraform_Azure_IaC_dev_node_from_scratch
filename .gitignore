@@ -1,0 +1,4 @@
+terraform_kubeadm/terraform.*
+terraform_kubeadm/.terraform
+terraform_kubeadm/.terraform.*
+
