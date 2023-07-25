@@ -180,6 +180,7 @@ resource "azurerm_linux_virtual_machine" "mtc-vm" {
 # best to use ansible or custom_data or user data.
 # NOTE: the interpolation with var.host_os is a way to have the choice of either operating system
 # create a separate variables.tf file to define the value of var.host_os
+# https://developer.hashicorp.com/terraform/language/values/variables
 provisioner "local-exec" {
     #command = templatefile("windows-ssh-script.tpl", {
     #command = templatefile("linux-mac-ssh-config.tpl", {
