@@ -178,8 +178,12 @@ resource "azurerm_linux_virtual_machine" "mtc-vm" {
 # https://developer.hashicorp.com/terraform/language/resources/provisioners/syntax
 # remote-exec is strongly discouraged. Lightweight local-exec is ok.  For more complex scenarios
 # best to use ansible or custom_data or user data.
+# NOTE: the interpolation with var.host_os is a way to have the choice of either operating system
+# create a separate variables.tf file to define the value of var.host_os
 provisioner "local-exec" {
-    command = templatefile("linux-mac-ssh-config.tpl", {
+    #command = templatefile("windows-ssh-script.tpl", {
+    #command = templatefile("linux-mac-ssh-config.tpl", {
+    command = templatefile("${var.host_os}-ssh-script.tpl", {
         hostname = self.public_ip_address,
         user = "adminuser",
         identityfile = "~/.ssh/mtcazurekey"
@@ -204,6 +208,7 @@ data "azurerm_public_ip" "mtc-ip-data" {
     resource_group_name = azurerm_resource_group.mtc-rg.name
 }
 
+# https://developer.hashicorp.com/terraform/language/values/outputs
 output "public_ip_address" {
   value = "${azurerm_linux_virtual_machine.mtc-vm.name}: ${data.azurerm_public_ip.mtc-ip-data.ip_address}"
 }
