@@ -183,7 +183,7 @@ resource "azurerm_linux_virtual_machine" "mtc-vm" {
 # https://developer.hashicorp.com/terraform/language/values/variables
 provisioner "local-exec" {
     #command = templatefile("windows-ssh-script.tpl", {
-    #command = templatefile("linux-mac-ssh-config.tpl", {
+    #command = templatefile("linux-mac-ssh-script.tpl", {
     command = templatefile("${var.host_os}-ssh-script.tpl", {
         hostname = self.public_ip_address,
         user = "adminuser",
