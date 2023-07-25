@@ -189,12 +189,17 @@ provisioner "local-exec" {
         user = "adminuser",
         identityfile = "~/.ssh/mtcazurekey"
     })
-    interpreter = ["bash", "-c"] # for linux and mac
+    #interpreter = ["bash", "-c"] # for linux and mac
     #interpreter = ["Powershell", "-Command"] # for windows
     # command above will use the templatefile terraform function
     # https://developer.hashicorp.com/terraform/language/functions/templatefile
     # similar to file function but with path, also pass in the variables.
     # self.public_ip_address  public_ip_address is from the terraform state.
+
+    # the interpreter syntax can be optimized with conditional expressions
+    # https://developer.hashicorp.com/terraform/language/expressions/conditionals
+    # comment out the static interpreter setting above and use this:
+    interpreter = var.host_os == "linux-mac" ? ["bash", "-c"] : ["Powershell", "-Command"]
 }
 
   tags = {
