@@ -101,3 +101,104 @@ resource "azurerm_subnet_network_security_group_association" "mtc-sga" {
   # note that we are referencing the ids of both, not the name. The ids are assigned by Azure
   # and are know after the terraform apply and instantiation of the resource.
 }
+
+# Public IP so that the development node is accessible
+# This will be dynamically assigned
+# https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/public_ip
+resource "azurerm_public_ip" "mtc-ip" {
+  name = "mtp-ip"
+  # if there are multiple security groups, etc involved, use mutliple names and append an index number
+  resource_group_name = azurerm_resource_group.mtc-rg.name
+  location            = azurerm_resource_group.mtc-rg.location
+  allocation_method   = "Dynamic"
+
+  tags = {
+    environment = "dev"
+  }
+}
+
+# Network interface (NIC). This will actually be used on the VM that is created
+# we need to bind the public ip resource above to this NIC. That is when we will get
+# the dynamically provisioned ip address
+# https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/network_interface
+resource "azurerm_network_interface" "mtc-nic" {
+  name                = "mtc-nic"
+  location            = azurerm_resource_group.mtc-rg.location
+  resource_group_name = azurerm_resource_group.mtc-rg.name
+
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.mtc-subnet.id
+    private_ip_address_allocation = "Dynamic"
+    public_ip_address_id          = azurerm_public_ip.mtc-ip.id
+  }
+
+  tags = {
+    environment = "dev"
+  }
+}
+
+# add the resource information for the linux VM
+# https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/linux_virtual_machine
+resource "azurerm_linux_virtual_machine" "mtc-vm" {
+  name                  = "mtc-vm"
+  resource_group_name   = azurerm_resource_group.mtc-rg.name
+  location              = azurerm_resource_group.mtc-rg.location
+  size                  = "Standard_B1s" # this size is in free tier
+  admin_username        = "adminuser"    # this will be used for admin_ssh_key below
+  network_interface_ids = [azurerm_network_interface.mtc-nic.id]
+
+  custom_data = filebase64("customdata.tpl")
+  # The custom_data function expects filebase64.
+  # the full directory path is not required to customdata.tpl because it is in the project root
+  # where all of the terraform config files are at.
+  # https://developer.hashicorp.com/terraform/language/functions/filebase64
+
+  admin_ssh_key {
+    username   = "adminuser"
+    public_key = file("~/.ssh/mtcazurekey.pub") #this will use a terraform function. file() function reads a file and puts value in there
+    # https://developer.hashicorp.com/terraform/language/functions/file
+  }
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+
+  # we want to use an ubuntu image
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "UbuntuServer"
+    #sku       = "20.04-LTS" 
+    sku     = "18.04-LTS" # 18.04-LTS is end of life as of April 2023, but 20.04 did not work.
+    version = "latest"
+  }
+
+# this is the provisioner to configure the .ssh host config file with the vms information
+# https://developer.hashicorp.com/terraform/language/resources/provisioners/syntax
+# remote-exec is strongly discouraged. Lightweight local-exec is ok.  For more complex scenarios
+# best to use ansible or custom_data or user data.
+provisioner "local-exec" {
+    command = templatefile("linux-mac-ssh-config.tpl", {
+        hostname = self.public_ip_address,
+        user = "adminuser",
+        identityfile = "~/.ssh/mtcazurekey"
+    })
+    interpreter = ["bash", "-c"] # for linux and mac
+    #interpreter = ["Powershell", "-Command"] # for windows
+    # command above will use the templatefile terraform function
+    # https://developer.hashicorp.com/terraform/language/functions/templatefile
+    # similar to file function but with path, also pass in the variables.
+    # self.public_ip_address  public_ip_address is from the terraform state.
+}
+
+  tags = {
+    environment = "dev"
+  }
+}
+
+data "azurerm_public_ip" "mtc-ip-data" {
+    name = azurerm_public_ip.mtc-ip.name
+    resource_group_name = azurerm_resource_group.mtc-rg.name
+}
+
