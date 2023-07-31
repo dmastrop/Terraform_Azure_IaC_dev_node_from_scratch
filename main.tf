@@ -85,7 +85,7 @@ resource "azurerm_network_security_rule" "mtc-dev-rule" {
   protocol                    = "*"     # this will allow ICMP, etc as well.
   source_port_range           = "*"
   destination_port_range      = "*"                #source_address_prefix       = "*"
-  source_address_prefix       = "98.234.32.176/32" # we want to limit this to my own ip address.
+  source_address_prefix       = "98.234.0.0/16" # we want to limit this to my own ip address. There was a internet outage and address changed. Expand this to 98.234.0.0/16
   destination_address_prefix  = "*"
   resource_group_name         = azurerm_resource_group.mtc-rg.name
   network_security_group_name = azurerm_network_security_group.mtc-sg.name
